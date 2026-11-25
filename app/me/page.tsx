@@ -32,12 +32,14 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ tha
     { href: g.pre_open && !pre ? '/test/pre' : pre ? '/results' : null, t: '1. Входной тест',
       s: pre ? <span className="badge ok">пройден: {pre.score} из {pre.total}</span> : g.pre_open ? '8 вопросов и самооценка, 5 минут · +10' : <span className="badge warn">откроется в начале дня</span> },
     { href: '/live', t: '2. Интерактив', s: `Отвечено ${me.answered} из ${me.launched} · +2 за ответ, +3 за верный` },
-    { href: '/materials', t: '3. Материалы', s: 'Программа, шпаргалки по критериям, инструменты' },
-    { href: g.post_open && !post ? '/test/post' : post ? '/results' : null, t: '4. Итоговый тест',
+    { href: '/tasks', t: '3. Задания тетради', s: `Сдано ${me.tasksDone}, проверено ${me.tasksReviewed} · баллы: ${me.taskPts}` },
+    { href: '/questions', t: '4. Вопросы спикеру', s: `Задайте вопрос и поддержите чужие · +2 за вопрос` },
+    { href: '/materials', t: '5. Материалы', s: 'Программа, шпаргалки по критериям, инструменты' },
+    { href: g.post_open && !post ? '/test/post' : post ? '/results' : null, t: '6. Итоговый тест',
       s: post ? <span className="badge ok">пройден: {post.score} из {post.total}</span> : g.post_open ? 'Те же вопросы · +5 за каждый верный' : <span className="badge warn">откроется в конце дня</span> },
-    { href: g.feedback_open ? '/feedback' : null, t: '5. Анкета и план действий',
+    { href: g.feedback_open ? '/feedback' : null, t: '7. Анкета и план действий',
       s: fb ? <span className="badge ok">заполнено{me.plan ? ', план есть' : ''}</span> : g.feedback_open ? '2 минуты · +10, план действий +5' : <span className="badge warn">откроется в конце дня</span> },
-    { href: canCert ? '/certificate' : null, t: '6. Сертификат',
+    { href: canCert ? '/certificate' : null, t: '8. Сертификат',
       s: canCert ? (me.distinction ? 'С отличием! Скачать PDF' : 'Скачать или распечатать PDF') : <span className="badge warn">после итогового теста</span> },
   ];
 
@@ -101,6 +103,13 @@ export default async function Me({ searchParams }: { searchParams: Promise<{ tha
           <li className={me.engagement === null || me.engagement >= 0.7 ? 'done' : ''}>Ответить не меньше чем на 70% вопросов интерактива <span className="muted">(у вас {pc(me.engagement)})</span></li>
         </ul>
       </div>
+
+      {me.awards.length > 0 && (
+        <div className="card">
+          <h3>Бонусы от тренера: +{me.awardPts}</h3>
+          <ul className="small" style={{ margin: 0, paddingLeft: 18 }}>{me.awards.map((a, i) => <li key={i}><b>{a.points > 0 ? '+' : ''}{a.points}</b> {a.reason}</li>)}</ul>
+        </div>
+      )}
 
       {g.board_open && board.length > 0 && (
         <div className="card">

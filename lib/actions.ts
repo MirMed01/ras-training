@@ -324,3 +324,110 @@ export async function deleteMaterial(fd: FormData) {
 export async function whoami() {
   return currentUser();
 }
+
+// ---------- Задания рабочей тетради ----------
+
+export async function submitTask(fd: FormData) {
+  const u = await requireUser();
+  const g = await userGroup(u);
+  if (!g) redirect('/me');
+  const taskId = Number(fd.get('task_id'));
+  const answer = str(fd, 'answer', 8000);
+  if (!answer) redirect(`/tasks?err=empty#t${taskId}`);
+  const sql = await db();
+  const t = (await sql`select id from tasks where id = ${taskId} and module = ${g.module} and open`)[0];
+  if (!t) redirect('/tasks');
+  // После проверки ответ не меняется, чтобы баллы соответствовали тексту.
+  await sql`insert into submissions(task_id, user_id, answer) values (${taskId}, ${u.id}, ${answer})
+    on conflict (task_id, user_id) do update set answer = excluded.answer, updated_at = now()
+    where submissions.points is null`;
+  redirect(`/tasks?ok=${taskId}#t${taskId}`);
+}
+
+export async function reviewSubmission(fd: FormData) {
+  const me = await requireTrainer();
+  const id = Number(fd.get('submission_id'));
+  const sql = await db();
+  const row = (await sql`select s.id, t.max_points from submissions s join tasks t on t.id = s.task_id where s.id = ${id}`)[0];
+  if (!row) return;
+  const raw = String(fd.get('points') ?? '').trim();
+  const pts = raw === '' ? null : Math.max(0, Math.min(row.max_points, Math.round(Number(raw))));
+  const comment = str(fd, 'comment', 1000) || null;
+  await sql`update submissions set points = ${pts}, comment = ${comment}, reviewed_by = ${me.id},
+    reviewed_at = ${pts === null ? null : new Date()} where id = ${id}`;
+  revalidatePath('/admin');
+}
+
+export async function saveTask(fd: FormData) {
+  await requireTrainer();
+  const id = Number(fd.get('id') || 0);
+  const module = Number(fd.get('module')) === 2 ? 2 : 1;
+  const title = str(fd, 'title', 160);
+  const instructions = str(fd, 'instructions', 8000);
+  const max = Math.max(1, Math.min(100, Number(fd.get('max_points')) || 10));
+  if (!title || !instructions) return;
+  const sql = await db();
+  if (id) {
+    await sql`update tasks set module = ${module}, title = ${title}, instructions = ${instructions}, max_points = ${max} where id = ${id}`;
+  } else {
+    const [{ s }] = await sql`select coalesce(max(sort), 0) + 1 as s from tasks`;
+    await sql`insert into tasks(module, title, instructions, max_points, sort) values (${module}, ${title}, ${instructions}, ${max}, ${s})`;
+  }
+  revalidatePath('/admin/content');
+}
+
+export async function toggleTask(fd: FormData) {
+  await requireTrainer();
+  const sql = await db();
+  await sql`update tasks set open = not open where id = ${Number(fd.get('id'))}`;
+  revalidatePath('/admin');
+}
+
+export async function deleteTask(fd: FormData) {
+  await requireTrainer();
+  const sql = await db();
+  await sql`delete from tasks where id = ${Number(fd.get('id'))}`;
+  revalidatePath('/admin/content');
+}
+
+// ---------- Бонусы от тренера ----------
+
+export async function awardPoints(fd: FormData) {
+  const me = await requireTrainer();
+  const pts = Math.max(-50, Math.min(50, Math.round(Number(fd.get('points')) || 0)));
+  const reason = str(fd, 'reason', 200) || 'Активное участие';
+  if (!pts) return;
+  const sql = await db();
+  const userId = Number(fd.get('user_id') || 0);
+  const groupId = Number(fd.get('group_id') || 0);
+  if (userId) {
+    await sql`insert into awards(user_id, points, reason, by_user) values (${userId}, ${pts}, ${reason}, ${me.id})`;
+  } else if (groupId) {
+    await sql`insert into awards(user_id, points, reason, by_user)
+      select id, ${pts}, ${reason}, ${me.id} from users where group_id = ${groupId} and role = 'participant'`;
+  }
+  revalidatePath('/admin');
+}
+
+export async function deleteAward(fd: FormData) {
+  await requireTrainer();
+  const sql = await db();
+  await sql`delete from awards where id = ${Number(fd.get('id'))}`;
+  revalidatePath('/admin');
+}
+
+// ---------- Вопросы спикеру (модерация) ----------
+
+export async function moderateQuestion(fd: FormData) {
+  const me = await requireTrainer();
+  const id = Number(fd.get('id'));
+  const op = String(fd.get('op'));
+  const sql = await db();
+  if (op === 'answered') await sql`update questions set answered = not answered where id = ${id}`;
+  if (op === 'hide') await sql`update questions set hidden = not hidden where id = ${id}`;
+  if (op === 'star') {
+    const q = (await sql`update questions set starred = true where id = ${id} and not starred returning user_id`)[0];
+    if (q) await sql`insert into awards(user_id, points, reason, by_user) values (${q.user_id}, 5, 'Лучший вопрос спикеру', ${me.id})`;
+  }
+  revalidatePath('/admin');
+}

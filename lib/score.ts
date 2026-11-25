@@ -11,6 +11,9 @@ export const RULES = [
   { what: 'Прирост знаний', pts: '+5', note: 'за каждый вопрос, где утром ошиблись, а вечером ответили верно' },
   { what: 'Ответ в интерактиве', pts: '+2', note: 'за каждый вопрос, «Миф или факт», кейс, опрос' },
   { what: 'Верный ответ в «Миф или факт» и кейсах', pts: '+3', note: 'дополнительно' },
+  { what: 'Задания рабочей тетради', pts: 'до +15', note: 'баллы ставит тренер после проверки' },
+  { what: 'Бонус от тренера', pts: '+3…+10', note: 'за активность, работу в группе, лучший вопрос' },
+  { what: 'Вопрос спикеру', pts: '+2', note: 'за каждый, до 3 вопросов' },
   { what: 'Анкета обратной связи', pts: '+10', note: '' },
   { what: 'План действий на неделю', pts: '+5', note: 'поле «Одно действие, которое я применю»' },
 ];
@@ -19,8 +22,8 @@ export const LEVELS = [
   { min: 0, name: 'Слушатель' },
   { min: 25, name: 'Участник' },
   { min: 60, name: 'Практик' },
-  { min: 100, name: 'Эксперт' },
-  { min: 140, name: 'Мастер диагностики' },
+  { min: 110, name: 'Эксперт' },
+  { min: 170, name: 'Мастер диагностики' },
 ];
 
 export type Badge = { id: string; icon: string; name: string; how: string; got: boolean };
@@ -34,6 +37,8 @@ export type PScore = {
   answered: number; launched: number; engagement: number | null;
   gradable: number; correctLive: number; mythCorrect: number; caseCorrect: number;
   confPre: number | null; confPost: number | null;
+  taskPts: number; tasksDone: number; tasksReviewed: number; awardPts: number; questionsAsked: number;
+  awards: { points: number; reason: string }[];
   feedback: boolean; plan: boolean; distinction: boolean;
   badges: Badge[];
 };
@@ -49,7 +54,7 @@ export function shortName(full: string) {
 export async function groupScores(g: Group): Promise<PScore[]> {
   const sql = await db();
   const qs = TESTS[g.module] ?? [];
-  const [users, atts, resp, launchedRows, fbs] = await Promise.all([
+  const [users, atts, resp, launchedRows, fbs, subs, aws, qrows] = await Promise.all([
     sql`select id, full_name, hide_board, created_at from users where group_id = ${g.id} and role = 'participant' order by created_at`,
     sql`select a.user_id, a.kind, a.score, a.answers, a.confidence from attempts a join users u on u.id = a.user_id
         where u.group_id = ${g.id} and a.module = ${g.module}`,
@@ -60,6 +65,10 @@ export async function groupScores(g: Group): Promise<PScore[]> {
           select activity_id from runs where group_id = ${g.id}
           union select activity_id from responses where group_id = ${g.id}) x`,
     sql`select f.user_id, f.apply_text from feedback f join users u on u.id = f.user_id where u.group_id = ${g.id} and f.module = ${g.module}`,
+    sql`select s.user_id, s.points from submissions s join tasks t on t.id = s.task_id join users u on u.id = s.user_id
+        where u.group_id = ${g.id} and t.module = ${g.module}`,
+    sql`select a.user_id, a.points, a.reason from awards a join users u on u.id = a.user_id where u.group_id = ${g.id} order by a.created_at`,
+    sql`select user_id, count(*)::int as n from questions where group_id = ${g.id} group by user_id`,
   ]);
   const launched = launchedRows[0]?.n ?? 0;
 
@@ -84,7 +93,12 @@ export async function groupScores(g: Group): Promise<PScore[]> {
       ? Math.max(0, (postScore - preScore) / (qs.length - preScore)) : null;
     const plan = !!(fb?.apply_text && String(fb.apply_text).trim().length >= 5);
 
-    const xp = (pre ? 10 : 0) + (postScore ?? 0) * 5 + fixed * 5
+    const mySubs = subs.filter((x) => x.user_id === u.id);
+    const taskPts = mySubs.reduce((a, x) => a + (x.points ?? 0), 0);
+    const myAwards = aws.filter((x) => x.user_id === u.id).map((x) => ({ points: x.points as number, reason: x.reason as string }));
+    const awardPts = myAwards.reduce((a, x) => a + x.points, 0);
+    const questionsAsked = qrows.find((x) => x.user_id === u.id)?.n ?? 0;
+    const xp = taskPts + awardPts + Math.min(3, questionsAsked) * 2 + (pre ? 10 : 0) + (postScore ?? 0) * 5 + fixed * 5
       + mine.length * 2 + right.length * 3 + (fb ? 10 : 0) + (plan ? 5 : 0);
 
     let levelIdx = 0;
@@ -103,6 +117,8 @@ export async function groupScores(g: Group): Promise<PScore[]> {
       { id: 'active', icon: '🔥', name: 'Активист', how: 'Ответить на 80% запущенных вопросов', got: launched >= 5 && (engagement ?? 0) >= 0.8 },
       { id: 'growth', icon: '📈', name: 'Рост', how: 'Исправить к вечеру 3 утренние ошибки', got: fixed >= 3 },
       { id: 'top', icon: '🏆', name: 'Отличник', how: 'Итоговый тест без ошибок', got: postScore !== null && postScore === qs.length },
+      { id: 'tasks', icon: '📝', name: 'Исследователь', how: 'Сдать 3 задания рабочей тетради', got: mySubs.length >= 3 },
+      { id: 'ask', icon: '❓', name: 'Любопытный', how: 'Задать вопрос спикеру', got: questionsAsked >= 1 },
       { id: 'full', icon: '✅', name: 'Полный маршрут', how: 'Входной и итоговый тест, анкета и план действий', got: !!pre && !!post && !!fb && plan },
     ];
 
@@ -113,6 +129,7 @@ export async function groupScores(g: Group): Promise<PScore[]> {
       pre: preScore, post: postScore, total: qs.length, fixed, normGain,
       answered: mine.length, launched, engagement, gradable: graded.length, correctLive: right.length,
       mythCorrect, caseCorrect, confPre, confPost, feedback: !!fb, plan, distinction, badges,
+      taskPts, tasksDone: mySubs.length, tasksReviewed: mySubs.filter((x) => x.points !== null).length, awardPts, questionsAsked, awards: myAwards,
     };
   });
 

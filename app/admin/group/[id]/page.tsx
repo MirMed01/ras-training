@@ -3,12 +3,13 @@ import { notFound } from 'next/navigation';
 import { requireTrainer } from '@/lib/auth';
 import { db, type Group } from '@/lib/db';
 import { groupStats } from '@/lib/stats';
-import { deleteUser, moveUser, resetAttempt, resetPassword, saveGroup, toggleFlag } from '@/lib/actions';
+import { awardPoints, deleteUser, moveUser, resetAttempt, resetPassword, saveGroup, toggleFlag } from '@/lib/actions';
 import { joinUrl, qrSvg } from '@/lib/url';
 import { MODULES } from '@/lib/content';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { groupKpi, groupScores } from '@/lib/score';
 
+const REASONS = ['Активное участие', 'Работа в группе', 'Лучший вопрос', 'Помощь коллегам', 'Выступление от группы', 'Корректировка'];
 const fmt = (v: number | null, d = 1) => (v === null ? '—' : v.toFixed(d).replace('.', ','));
 const p = (v: number | null) => (v === null ? '—' : Math.round(v * 100) + '%');
 
@@ -27,6 +28,8 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
   const sc = await groupScores(g);
   const byUser = new Map(sc.map((x) => [x.userId, x]));
   const k = groupKpi(sc);
+  const [{ n: pendingN }] = await sql`select count(*)::int as n from submissions s join users u on u.id = s.user_id
+    join tasks t on t.id = s.task_id where u.group_id = ${g.id} and t.module = ${g.module} and s.points is null`;
   const url = await joinUrl(g.code);
   const svg = await qrSvg(url);
 
@@ -37,6 +40,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
         <div><h1 style={{ marginBottom: 2 }}>{g.name}</h1><div className="muted">{MODULES[g.module]?.name} · код <b>{g.code}</b></div></div>
         <div className="row">
           <Link className="btn" href={`/admin/group/${g.id}/live`}>▶ Пульт интерактива</Link>
+          <Link className="btn ghost" href={`/admin/group/${g.id}/tasks`}>📝 Задания{pendingN ? ` (${pendingN} на проверке)` : ''}</Link>
           <a className="btn ghost" href={`/api/export/${g.id}`}>Экспорт в Excel</a>
         </div>
       </div>
@@ -91,6 +95,17 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <div className="card">
+        <h3>Бонусные баллы</h3>
+        <p className="small muted">Отдельному участнику: «действия» → ★ в таблице ниже. Всей группе, например за работу в командах:</p>
+        <form action={awardPoints} className="row">
+          <input type="hidden" name="group_id" value={g.id} />
+          <select name="points" defaultValue="5" style={{ width: 90 }}>{[3, 5, 10].map((v) => <option key={v} value={v}>+{v}</option>)}</select>
+          <input type="text" name="reason" defaultValue="Работа в группе" style={{ flex: 1, minWidth: 180 }} />
+          <ConfirmButton className="btn sm warn" text="Начислить баллы всем участникам группы?">Начислить всем</ConfirmButton>
+        </form>
+      </div>
+
+      <div className="card">
         <div className="row between"><h3 style={{ margin: 0 }}>Участники</h3>
           <span className="small muted">{Object.entries(s.byProf).map(([k, v]) => `${k}: ${v}`).join(' · ')}</span></div>
         <div className="tablewrap">
@@ -113,6 +128,12 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                     <details>
                       <summary className="small">действия</summary>
                       <div style={{ minWidth: 230, paddingTop: 6 }}>
+                        <form action={awardPoints} className="row" style={{ gap: 6, flexWrap: 'nowrap', marginBottom: 6 }}>
+                          <input type="hidden" name="user_id" value={r.id} />
+                          <select name="points" defaultValue="5" style={{ padding: 6, width: 70 }}>{[3, 5, 10, -5].map((v) => <option key={v} value={v}>{v > 0 ? '+' : ''}{v}</option>)}</select>
+                          <select name="reason" style={{ padding: 6 }}>{REASONS.map((x) => <option key={x}>{x}</option>)}</select>
+                          <button className="btn sm warn">★</button>
+                        </form>
                         <form action={resetPassword} className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
                           <input type="hidden" name="user_id" value={r.id} />
                           <input type="text" name="password" placeholder="новый пароль" required minLength={6} style={{ padding: 6 }} />

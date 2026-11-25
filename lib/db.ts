@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import crypto from 'crypto';
-import { SEED_ACTIVITIES, SEED_MATERIALS } from './content';
+import { SEED_ACTIVITIES, SEED_MATERIALS, SEED_TASKS } from './content';
 
 const url = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 
@@ -65,6 +65,27 @@ alter table attempts add column if not exists confidence jsonb;
 alter table groups add column if not exists board_open boolean not null default true;
 alter table users add column if not exists hide_board boolean not null default false;
 alter table users add column if not exists token_ver int not null default 0;
+create table if not exists tasks(
+  id serial primary key, module int not null, title text not null, instructions text not null,
+  max_points int not null default 10, open boolean not null default true, sort int not null default 0,
+  created_at timestamptz not null default now());
+create table if not exists submissions(
+  id serial primary key, task_id int not null references tasks(id) on delete cascade,
+  user_id int not null references users(id) on delete cascade, answer text not null,
+  points int, comment text, reviewed_by int, reviewed_at timestamptz,
+  updated_at timestamptz not null default now(), unique(task_id, user_id));
+create table if not exists awards(
+  id serial primary key, user_id int not null references users(id) on delete cascade,
+  points int not null, reason text not null, by_user int, created_at timestamptz not null default now());
+create table if not exists questions(
+  id serial primary key, group_id int not null references groups(id) on delete cascade,
+  user_id int not null references users(id) on delete cascade, text text not null,
+  anonymous boolean not null default true, answered boolean not null default false,
+  hidden boolean not null default false, starred boolean not null default false,
+  created_at timestamptz not null default now());
+create table if not exists question_votes(
+  question_id int not null references questions(id) on delete cascade,
+  user_id int not null references users(id) on delete cascade, primary key(question_id, user_id));
 create table if not exists login_fail(phone text not null, at timestamptz not null default now());
 create index if not exists login_fail_phone on login_fail(phone, at);
 `;
@@ -105,6 +126,14 @@ async function setup() {
       }
       await tx`insert into settings(key, value) values ('mig_program_v2', '1') on conflict do nothing`;
     }
+    const [{ t }] = await tx`select count(*)::int as t from tasks`;
+    if (t === 0) {
+      let i = 0;
+      for (const s of SEED_TASKS) {
+        await tx`insert into tasks(module, title, instructions, max_points, sort)
+          values (${s.module}, ${s.title}, ${s.instructions}, ${s.max}, ${i++})`;
+      }
+    }
     await tx`insert into settings(key, value) values ('trainer_code', ${'T-' + crypto.randomBytes(3).toString('hex').toUpperCase()})
       on conflict (key) do nothing`;
     await tx`insert into settings(key, value) values ('auth_secret', ${crypto.randomBytes(32).toString('hex')})
@@ -142,6 +171,7 @@ export type User = {
   id: number; full_name: string; phone: string; profession: string | null; workplace: string | null;
   role: 'participant' | 'trainer'; group_id: number | null; hide_board?: boolean;
 };
+export type Task = { id: number; module: number; title: string; instructions: string; max_points: number; open: boolean; sort: number };
 export type Activity = {
   id: number; module: number; type: 'myth' | 'quiz' | 'poll' | 'open'; title: string; prompt: string;
   options: string[]; correct: number | null; explanation: string | null; sort: number;

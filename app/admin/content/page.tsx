@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { requireTrainer } from '@/lib/auth';
 import { db, type Activity } from '@/lib/db';
-import { deleteActivity, deleteMaterial, saveActivity, saveMaterial } from '@/lib/actions';
+import { deleteActivity, deleteMaterial, deleteTask, saveActivity, saveMaterial, saveTask } from '@/lib/actions';
+import type { Task } from '@/lib/db';
 import { ConfirmButton } from '@/components/ConfirmButton';
 
 const TYPE: Record<string, string> = { myth: 'Миф или факт', quiz: 'Кейс / вопрос с верным ответом', poll: 'Опрос (без верного ответа)', open: 'Открытый вопрос' };
@@ -28,11 +29,27 @@ function ActivityForm({ a }: { a?: Activity }) {
   );
 }
 
+function TaskForm({ t }: { t?: Task }) {
+  return (
+    <form action={saveTask}>
+      {t && <input type="hidden" name="id" value={t.id} />}
+      <div className="row">
+        <div style={{ flex: 1, minWidth: 120 }}><label>Модуль</label><select name="module" defaultValue={String(t?.module ?? 1)}><option value="1">1</option><option value="2">2</option></select></div>
+        <div style={{ flex: 1, minWidth: 120 }}><label>Максимум баллов</label><input type="text" inputMode="numeric" name="max_points" defaultValue={String(t?.max_points ?? 10)} /></div>
+      </div>
+      <label>Название</label><input type="text" name="title" required defaultValue={t?.title ?? ''} />
+      <label>Условие задания</label><textarea name="instructions" required defaultValue={t?.instructions ?? ''} style={{ minHeight: 160 }} />
+      <button className="btn sm" style={{ marginTop: 12 }}>{t ? 'Сохранить' : 'Добавить'}</button>
+    </form>
+  );
+}
+
 export default async function Content() {
   await requireTrainer();
   const sql = await db();
   const acts = await sql<Activity[]>`select * from activities order by module, sort, id`;
   const mats = await sql`select * from materials order by module, sort, id`;
+  const tasks = await sql<Task[]>`select * from tasks order by module, sort, id`;
   return (
     <main className="wrap">
       <p className="small"><Link href="/admin">← Кабинет тренера</Link></p>
@@ -49,6 +66,16 @@ export default async function Content() {
             </details>
           ))}
         </div>
+      ))}
+
+      <h2 style={{ marginTop: 28 }}>Задания рабочей тетради</h2>
+      <details className="card"><summary><b>+ Новое задание</b></summary><TaskForm /></details>
+      {tasks.map((t) => (
+        <details className="card" key={t.id} style={{ padding: 14 }}>
+          <summary><span className="badge">модуль {t.module}</span> {t.title} <span className="small muted">· до {t.max_points} б.{t.open ? '' : ' · скрыто'}</span></summary>
+          <TaskForm t={t} />
+          <form action={deleteTask} style={{ marginTop: 8 }}><input type="hidden" name="id" value={t.id} /><ConfirmButton className="btn sm danger" text="Удалить задание вместе с ответами участников?">Удалить</ConfirmButton></form>
+        </details>
       ))}
 
       <h2 style={{ marginTop: 28 }}>Материалы</h2>

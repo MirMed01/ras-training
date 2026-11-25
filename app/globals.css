@@ -203,3 +203,10 @@ details > summary { cursor: pointer; }
 .screen .board .muted { color: rgba(255,255,255,.6); }
 @media (max-width: 600px) { .stat .v { font-size: 1.3rem; } .stats { grid-template-columns: 1fr 1fr; gap: 8px; } }
 .progress-sticky { position: sticky; top: 52px; z-index: 5; background: var(--bg); padding: 8px 0 10px; margin-bottom: 8px; }
+.qa { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; }
+.vote-btn { flex: none; width: 52px; border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 6px 0; cursor: pointer; color: var(--muted); font: inherit; display: flex; flex-direction: column; align-items: center; }
+.vote-btn.on { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+.qa-screen { display: flex; gap: 22px; align-items: baseline; font-size: 1.7rem; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,.15); }
+.qa-screen .v { color: #5eead4; font-weight: 700; min-width: 80px; }
+@media (max-width: 600px) { .nav-extra { display: none; } .top nav { gap: 9px; font-size: .84rem; } }
+@media (max-width: 600px) { .logo-full { display: none; } }

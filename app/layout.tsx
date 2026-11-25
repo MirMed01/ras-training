@@ -21,12 +21,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <header className="top">
           <div className="wrap">
-            <Link href="/" className="logo">РАС·Эксперт<small>тренинг</small></Link>
+            <Link href="/" className="logo">РАС<span className="logo-full">·Эксперт</span><small>тренинг</small></Link>
             <nav>
               {user?.role === 'participant' && (<>
                 <Link href="/me">Кабинет</Link>
                 <Link href="/live">Интерактив</Link>
-                <Link href="/materials">Материалы</Link>
+                <Link href="/tasks">Задания</Link>
+                <Link href="/questions">Вопросы</Link>
+                <Link href="/materials" className="nav-extra">Материалы</Link>
               </>)}
               {user?.role === 'trainer' && (<>
                 <Link href="/admin">Группы</Link>
