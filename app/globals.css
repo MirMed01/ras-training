@@ -202,3 +202,4 @@ details > summary { cursor: pointer; }
 .screen .board li:before { color: #5eead4; }
 .screen .board .muted { color: rgba(255,255,255,.6); }
 @media (max-width: 600px) { .stat .v { font-size: 1.3rem; } .stats { grid-template-columns: 1fr 1fr; gap: 8px; } }
+.progress-sticky { position: sticky; top: 52px; z-index: 5; background: var(--bg); padding: 8px 0 10px; margin-bottom: 8px; }

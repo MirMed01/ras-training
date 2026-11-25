@@ -28,13 +28,13 @@ export function RegisterForm({ code }: { code: string }) {
       </select>
       <label htmlFor="workplace">Место работы <span className="muted">(необязательно)</span></label>
       <input id="workplace" name="workplace" type="text" placeholder="Например, центр INSIGHT" />
-      <label htmlFor="password">Придумайте пароль (от 4 символов)</label>
-      <input id="password" name="password" type="password" autoComplete="new-password" required minLength={4} />
+      <label htmlFor="password">Придумайте пароль (от 6 символов)</label>
+      <input id="password" name="password" type="password" autoComplete="new-password" required minLength={6} />
       <label htmlFor="code">Код группы</label>
       <input id="code" name="code" type="text" required defaultValue={code} autoCapitalize="characters" placeholder="Например, RAS1" />
       <label className="check" style={{ marginTop: 16 }}>
         <input type="checkbox" name="consent" required />
-        <span className="small">Согласен(на) на обработку указанных данных организатором тренинга для учёта участия, результатов тестов и выдачи сертификата.</span>
+        <span className="small">Согласен(на) на обработку указанных данных организатором тренинга для учёта участия, результатов тестов и выдачи сертификата. <a href="/privacy" target="_blank">Подробнее</a></span>
       </label>
       <button className="btn block" style={{ marginTop: 16 }} disabled={pending}>{pending ? 'Регистрируем…' : 'Зарегистрироваться'}</button>
       <p className="small muted" style={{ marginTop: 12 }}>Уже регистрировались? <Link href="/login">Войти</Link></p>

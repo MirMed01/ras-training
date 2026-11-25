@@ -4,6 +4,7 @@ import { myAttempts } from '@/lib/data';
 import { TESTS, MODULES, CONFIDENCE } from '@/lib/content';
 import { submitTest } from '@/lib/actions';
 import { SubmitButton } from '@/components/SubmitButton';
+import { TestProgress } from '@/components/TestProgress';
 
 export default async function TestPage({ params }: { params: Promise<{ kind: string }> }) {
   const { kind } = await params;
@@ -26,6 +27,7 @@ export default async function TestPage({ params }: { params: Promise<{ kind: str
         : 'Те же вопросы, что утром. После отправки увидите правильные ответы с пояснениями и свой прогресс.'}</p>
       <form action={submitTest}>
         <input type="hidden" name="kind" value={kind} />
+        <TestProgress storageKey={`ras-test-${u.id}-${g.module}-${kind}`} total={qs.length + (CONFIDENCE[g.module] ?? []).length} />
         {qs.map((q, i) => (
           <fieldset className="q" key={i} style={{ margin: '0 0 12px' }}>
             <legend className="qt" style={{ padding: 0 }}>{i + 1}. {q.q}</legend>

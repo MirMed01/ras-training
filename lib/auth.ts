@@ -28,7 +28,9 @@ export async function checkPassword(p: string, h: string) {
 }
 
 export async function startSession(userId: number) {
-  const token = await new SignJWT({ uid: userId })
+  const sql = await db();
+  const [row] = await sql`select token_ver from users where id = ${userId}`;
+  const token = await new SignJWT({ uid: userId, v: row?.token_ver ?? 0 })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('60d')
@@ -49,8 +51,11 @@ export async function currentUser(): Promise<User | null> {
     const { payload } = await jwtVerify(token, await secret());
     const uid = Number(payload.uid);
     const sql = await db();
-    const rows = await sql<User[]>`select id, full_name, phone, profession, workplace, role, group_id, hide_board from users where id = ${uid}`;
-    return rows[0] ?? null;
+    const rows = await sql<(User & { token_ver: number })[]>`select id, full_name, phone, profession, workplace, role, group_id, hide_board, token_ver from users where id = ${uid}`;
+    const u = rows[0];
+    // После смены или сброса пароля старые сессии (другие телефоны) перестают действовать.
+    if (!u || (u.token_ver ?? 0) !== Number(payload.v ?? 0)) return null;
+    return u;
   } catch {
     return null;
   }

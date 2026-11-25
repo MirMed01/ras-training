@@ -64,6 +64,9 @@ create table if not exists runs(
 alter table attempts add column if not exists confidence jsonb;
 alter table groups add column if not exists board_open boolean not null default true;
 alter table users add column if not exists hide_board boolean not null default false;
+alter table users add column if not exists token_ver int not null default 0;
+create table if not exists login_fail(phone text not null, at timestamptz not null default now());
+create index if not exists login_fail_phone on login_fail(phone, at);
 `;
 
 async function setup() {
@@ -92,6 +95,15 @@ async function setup() {
         await tx`insert into materials(module, title, body, url, sort)
           values (${s.module}, ${s.title}, ${s.body}, ${s.url ?? null}, ${i++})`;
       }
+    }
+    // Миграция v2: программа дня по утверждённому расписанию (меняем только нетронутый стартовый текст).
+    const mig = await tx`select 1 from settings where key = 'mig_program_v2'`;
+    if (!mig[0]) {
+      for (const sm of SEED_MATERIALS.filter((x) => x.title.startsWith('Программа'))) {
+        await tx`update materials set body = ${sm.body} where module = ${sm.module} and title = ${sm.title}
+          and (body like '10:00 Открытие, входной тест%' or body like '10:00 Входной тест%')`;
+      }
+      await tx`insert into settings(key, value) values ('mig_program_v2', '1') on conflict do nothing`;
     }
     await tx`insert into settings(key, value) values ('trainer_code', ${'T-' + crypto.randomBytes(3).toString('hex').toUpperCase()})
       on conflict (key) do nothing`;

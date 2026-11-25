@@ -115,7 +115,7 @@ export default async function GroupPage({ params }: { params: Promise<{ id: stri
                       <div style={{ minWidth: 230, paddingTop: 6 }}>
                         <form action={resetPassword} className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
                           <input type="hidden" name="user_id" value={r.id} />
-                          <input type="text" name="password" placeholder="новый пароль" required minLength={4} style={{ padding: 6 }} />
+                          <input type="text" name="password" placeholder="новый пароль" required minLength={6} style={{ padding: 6 }} />
                           <button className="btn sm">OK</button>
                         </form>
                         <form action={moveUser} className="row" style={{ gap: 6, flexWrap: 'nowrap', marginTop: 6 }}>

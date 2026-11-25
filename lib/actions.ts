@@ -25,7 +25,7 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
   if (full_name.split(/\s+/).length < 2) return { error: 'Укажите фамилию и имя (так они будут в сертификате).' };
   if (phone.length < 9) return { error: 'Укажите номер телефона полностью, например +992 90 123 45 67.' };
   if (!PROFESSIONS.includes(profession)) return { error: 'Выберите профессию.' };
-  if (password.length < 4) return { error: 'Пароль должен быть не короче 4 символов.' };
+  if (password.length < 6) return { error: 'Пароль должен быть не короче 6 символов.' };
   if (!fd.get('consent')) return { error: 'Нужно согласие на обработку данных для участия в тренинге.' };
 
   const sql = await db();
@@ -52,11 +52,17 @@ export async function login(_: FormState, fd: FormData): Promise<FormState> {
   const phone = normPhone(str(fd, 'phone', 40));
   const password = String(fd.get('password') ?? '');
   const sql = await db();
+  // Защита от подбора: не больше 8 неудачных попыток на номер за 15 минут.
+  const [{ n }] = await sql`select count(*)::int as n from login_fail where phone = ${phone} and at > now() - interval '15 minutes'`;
+  if (n >= 8) return { error: 'Слишком много попыток. Подождите 15 минут или попросите тренера сбросить пароль.' };
   const rows = await sql`select id, role, password_hash from users where phone = ${phone}`;
   const u = rows[0];
   if (!u || !(await checkPassword(password, u.password_hash))) {
+    await sql`insert into login_fail(phone) values (${phone})`;
+    await sql`delete from login_fail where at < now() - interval '1 day'`;
     return { error: 'Неверный телефон или пароль. Если забыли пароль, подойдите к тренеру: он сбросит его за минуту.' };
   }
+  await sql`delete from login_fail where phone = ${phone}`;
   await startSession(u.id);
   redirect(u.role === 'trainer' ? '/admin' : '/me');
 }
@@ -135,8 +141,11 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
   await sql`update users set full_name = ${full_name}, workplace = ${workplace || null}, hide_board = ${hide} where id = ${u.id}`;
   const np = String(fd.get('new_password') ?? '');
   if (np) {
-    if (np.length < 4) return { error: 'Новый пароль слишком короткий.' };
-    await sql`update users set password_hash = ${await hashPassword(np)} where id = ${u.id}`;
+    if (np.length < 6) return { error: 'Новый пароль должен быть не короче 6 символов.' };
+    await sql`update users set password_hash = ${await hashPassword(np)}, token_ver = token_ver + 1 where id = ${u.id}`;
+    await startSession(u.id);
+    revalidatePath('/me');
+    return { ok: 'Сохранено. Пароль изменён, на других устройствах нужно войти заново.' };
   }
   revalidatePath('/me');
   return { ok: 'Сохранено.' };
@@ -187,9 +196,10 @@ export async function resetPassword(fd: FormData) {
   await requireTrainer();
   const id = Number(fd.get('user_id'));
   const pw = String(fd.get('password') ?? '').trim();
-  if (pw.length < 4) return;
+  if (pw.length < 6) return;
   const sql = await db();
-  await sql`update users set password_hash = ${await hashPassword(pw)} where id = ${id}`;
+  await sql`update users set password_hash = ${await hashPassword(pw)}, token_ver = token_ver + 1 where id = ${id}`;
+  await sql`delete from login_fail where phone = (select phone from users where id = ${id})`;
   revalidatePath('/admin');
 }
 
