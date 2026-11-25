@@ -182,3 +182,23 @@ details > summary { cursor: pointer; }
   .screen { padding: 18px; }
   .screen h1 { font-size: 1.6rem; }
 }
+
+/* Значки и рейтинг */
+.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 12px; }
+.bdg { border: 1px dashed var(--line); border-radius: 12px; padding: 10px; text-align: center; opacity: .5; filter: grayscale(1); }
+.bdg.got { opacity: 1; filter: none; border: 1px solid #f5d27a; background: #fffbeb; }
+.bdg .i { font-size: 1.8rem; }
+.bdg .n { font-weight: 650; font-size: .9rem; }
+.bdg .h { font-size: .75rem; color: var(--muted); }
+.goals { list-style: none; padding: 0; margin: 0; }
+.goals li { padding: 6px 0 6px 28px; position: relative; }
+.goals li:before { content: '○'; position: absolute; left: 4px; color: var(--muted); }
+.goals li.done:before { content: '✓'; color: var(--ok); font-weight: 700; }
+.board { list-style: none; counter-reset: b; padding: 0; margin: 0; }
+.board li { counter-increment: b; display: grid; grid-template-columns: 28px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.board li:before { content: counter(b); font-weight: 700; color: var(--brand); }
+.board li.me { background: var(--brand-soft); border-radius: 8px; padding-left: 6px; }
+.screen .board li { border-color: rgba(255,255,255,.15); font-size: 1.5rem; padding: 10px 0; }
+.screen .board li:before { color: #5eead4; }
+.screen .board .muted { color: rgba(255,255,255,.6); }
+@media (max-width: 600px) { .stat .v { font-size: 1.3rem; } .stats { grid-template-columns: 1fr 1fr; gap: 8px; } }

@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { requireUser, userGroup } from '@/lib/auth';
 import { myAttempts, pct } from '@/lib/data';
-import { TESTS } from '@/lib/content';
+import { TESTS, CONFIDENCE } from '@/lib/content';
+import { db } from '@/lib/db';
 
 export default async function Results({ searchParams }: { searchParams: Promise<{ just?: string }> }) {
   const u = await requireUser();
@@ -26,6 +27,7 @@ export default async function Results({ searchParams }: { searchParams: Promise<
       {pre && <div style={{ marginBottom: 6 }}><div className="small muted">Утром: {pct(pre.score, pre.total)}%</div><div className="bar pre"><span style={{ width: pct(pre.score, pre.total) + '%' }} /></div></div>}
       {post && <div style={{ marginBottom: 16 }}><div className="small muted">Вечером: {pct(post.score, post.total)}%</div><div className="bar"><span style={{ width: pct(post.score, post.total) + '%' }} /></div></div>}
 
+      <Confidence userId={u.id} module={g.module} />
       {post ? (
         <>
           <h2 style={{ marginTop: 20 }}>Разбор вопросов</h2>
@@ -52,5 +54,25 @@ export default async function Results({ searchParams }: { searchParams: Promise<
       )}
       <Link className="btn ghost" href="/me">В кабинет</Link>
     </main>
+  );
+}
+
+async function Confidence({ userId, module }: { userId: number; module: number }) {
+  const sql = await db();
+  const rows = await sql`select kind, confidence from attempts where user_id = ${userId} and module = ${module}`;
+  const pre = rows.find((r) => r.kind === 'pre')?.confidence as number[] | undefined;
+  const post = rows.find((r) => r.kind === 'post')?.confidence as number[] | undefined;
+  const items = CONFIDENCE[module] ?? [];
+  if (!pre && !post) return null;
+  return (
+    <div className="card">
+      <h3>Уверенность (из 5)</h3>
+      {items.map((t, i) => (
+        <div key={i} className="row between small" style={{ borderBottom: '1px solid var(--line)', padding: '6px 0', flexWrap: 'nowrap' }}>
+          <span>{t}</span>
+          <b style={{ whiteSpace: 'nowrap' }}>{pre?.[i] || '—'} → {post?.[i] || '—'}</b>
+        </div>
+      ))}
+    </div>
   );
 }

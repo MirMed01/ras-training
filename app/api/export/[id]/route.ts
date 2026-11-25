@@ -3,6 +3,7 @@ import { db, type Group } from '@/lib/db';
 import { groupStats } from '@/lib/stats';
 import { FEEDBACK_ITEMS, TESTS } from '@/lib/content';
 import { certNo } from '@/lib/data';
+import { groupScores } from '@/lib/score';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,8 +25,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const fbRows = await sql`select f.user_id, f.ratings, f.apply_text, f.next_text from feedback f join users u on u.id = f.user_id
     where u.group_id = ${g.id} and f.module = ${g.module}`;
   const fbBy = new Map(fbRows.map((f) => [f.user_id, f]));
+  const scBy = new Map((await groupScores(g)).map((x) => [x.userId, x]));
   const head = ['№', 'ФИО', 'Профессия', 'Место работы', 'Телефон', 'Регистрация',
-    `Претест (из ${qs.length})`, `Посттест (из ${qs.length})`, 'Прирост',
+    `Претест (из ${qs.length})`, `Посттест (из ${qs.length})`, 'Прирост', 'Норм. прирост, %', 'Баллы', 'Уровень', 'Место', 'Вовлечённость, %', 'Верно в интерактиве', 'Уверенность до', 'Уверенность после', 'Значки', 'Отличие',
     ...qs.map((_, i) => `Пре В${i + 1}`), ...qs.map((_, i) => `Пост В${i + 1}`),
     ...FEEDBACK_ITEMS, 'Применю в работе', 'Хочу разобрать', 'Номер сертификата'];
   const lines = [head.map(cell).join(';')];
@@ -35,6 +37,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     lines.push([
       i + 1, r.full_name, r.profession, r.workplace, r.phone, new Date(r.created_at).toLocaleString('ru-RU', { timeZone: 'Asia/Dushanbe' }),
       r.pre_score, r.post_score, r.pre_score !== null && r.post_score !== null ? r.post_score - r.pre_score : '',
+      ...((x) => x ? [x.normGain === null ? '' : Math.round(x.normGain * 100), x.xp, x.level, x.rank, x.engagement === null ? '' : Math.round(x.engagement * 100),
+        x.gradable ? `${x.correctLive}/${x.gradable}` : '', x.confPre?.toFixed(1) ?? '', x.confPost?.toFixed(1) ?? '',
+        x.badges.filter((b) => b.got).map((b) => b.name).join(', '), x.distinction ? 'да' : ''] : Array(10).fill(''))(scBy.get(r.id)),
       ...qs.map((_, k) => mark(r.pre_answers, k)), ...qs.map((_, k) => mark(r.post_answers, k)),
       ...FEEDBACK_ITEMS.map((_, k) => (f ? (f.ratings as (number | null)[])[k] : '')),
       f?.apply_text, f?.next_text, r.post_score !== null ? certNo({ id: r.id } as never, g) : '',

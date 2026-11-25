@@ -49,7 +49,7 @@ export async function currentUser(): Promise<User | null> {
     const { payload } = await jwtVerify(token, await secret());
     const uid = Number(payload.uid);
     const sql = await db();
-    const rows = await sql<User[]>`select id, full_name, phone, profession, workplace, role, group_id from users where id = ${uid}`;
+    const rows = await sql<User[]>`select id, full_name, phone, profession, workplace, role, group_id, hide_board from users where id = ${uid}`;
     return rows[0] ?? null;
   } catch {
     return null;

@@ -59,6 +59,11 @@ create index if not exists responses_run on responses(run_id);
 create index if not exists responses_activity on responses(activity_id, group_id);
 create table if not exists materials(
   id serial primary key, module int not null, title text not null, body text, url text, sort int not null default 0);
+create table if not exists runs(
+  run_id text primary key, group_id int not null, activity_id int not null, started_at timestamptz not null default now());
+alter table attempts add column if not exists confidence jsonb;
+alter table groups add column if not exists board_open boolean not null default true;
+alter table users add column if not exists hide_board boolean not null default false;
 `;
 
 async function setup() {
@@ -119,11 +124,11 @@ export async function getSetting(key: string): Promise<string | null> {
 
 export type Group = {
   id: number; name: string; code: string; module: number;
-  pre_open: boolean; post_open: boolean; feedback_open: boolean; cert_open: boolean;
+  pre_open: boolean; post_open: boolean; feedback_open: boolean; cert_open: boolean; board_open: boolean;
 };
 export type User = {
   id: number; full_name: string; phone: string; profession: string | null; workplace: string | null;
-  role: 'participant' | 'trainer'; group_id: number | null;
+  role: 'participant' | 'trainer'; group_id: number | null; hide_board?: boolean;
 };
 export type Activity = {
   id: number; module: number; type: 'myth' | 'quiz' | 'poll' | 'open'; title: string; prompt: string;

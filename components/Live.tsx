@@ -6,7 +6,7 @@ type Act = { id: number; type: 'myth' | 'quiz' | 'poll' | 'open'; title: string;
 type Res = { counts: number[]; texts: string[]; total: number };
 type LiveData = {
   state: 'live' | 'idle' | 'nogroup'; runId?: string; revealed?: boolean; activity?: Act; members?: number;
-  correct?: number | null; explanation?: string | null; mine?: { choice: number | null; text: string | null } | null; results?: Res | null;
+  correct?: number | null; explanation?: string | null; board?: { name: string; xp: number; level: string }[]; mine?: { choice: number | null; text: string | null } | null; results?: Res | null;
 };
 
 const TYPE_LABEL: Record<string, string> = { myth: 'Миф или факт', quiz: 'Кейс', poll: 'Опрос', open: 'Открытый вопрос' };
@@ -169,6 +169,12 @@ export function ScreenClient({ groupId, qr, joinUrl, groupName }: { groupId: num
             <div>{a.options.map((o, i) => <div key={i} className="res"><div className="rl"><span>{String.fromCharCode(65 + i)}. {o}</span></div></div>)}</div>
           )}
           {data?.revealed && data.explanation && <div className="expl">{data.explanation}</div>}
+        </div>
+      )}
+      {!a && data?.board && data.board.length > 0 && (
+        <div style={{ marginTop: 24, maxWidth: 900 }}>
+          <div className="kicker">Рейтинг группы</div>
+          <ol className="board">{data.board.map((b, i) => <li key={i}><span>{b.name}</span><span className="muted">{b.level}</span><b>{b.xp}</b></li>)}</ol>
         </div>
       )}
       <div className="count">

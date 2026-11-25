@@ -7,7 +7,7 @@ import { db, getSetting } from './db';
 import {
   checkPassword, currentUser, endSession, hashPassword, normPhone, requireTrainer, requireUser, startSession, userGroup,
 } from './auth';
-import { FEEDBACK_ITEMS, PROFESSIONS, TESTS } from './content';
+import { CONFIDENCE, FEEDBACK_ITEMS, PROFESSIONS, TESTS } from './content';
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
@@ -98,9 +98,13 @@ export async function submitTest(fd: FormData) {
     return v === null ? -1 : Number(v);
   });
   const score = answers.reduce((s, a, i) => s + (a === qs[i].correct ? 1 : 0), 0);
+  const confidence = (CONFIDENCE[g.module] ?? []).map((_, i) => {
+    const v = Number(fd.get(`c${i}`));
+    return v >= 1 && v <= 5 ? v : 0;
+  });
   const sql = await db();
-  await sql`insert into attempts(user_id, module, kind, answers, score, total)
-    values (${u.id}, ${g.module}, ${kind}, ${sql.json(answers)}, ${score}, ${qs.length})
+  await sql`insert into attempts(user_id, module, kind, answers, score, total, confidence)
+    values (${u.id}, ${g.module}, ${kind}, ${sql.json(answers)}, ${score}, ${qs.length}, ${sql.json(confidence)})
     on conflict (user_id, module, kind) do nothing`;
   redirect(`/results?just=${kind}`);
 }
@@ -127,7 +131,8 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
   const workplace = str(fd, 'workplace', 160);
   if (full_name.split(/\s+/).length < 2) return { error: 'Укажите фамилию и имя.' };
   const sql = await db();
-  await sql`update users set full_name = ${full_name}, workplace = ${workplace || null} where id = ${u.id}`;
+  const hide = !!fd.get('hide_board');
+  await sql`update users set full_name = ${full_name}, workplace = ${workplace || null}, hide_board = ${hide} where id = ${u.id}`;
   const np = String(fd.get('new_password') ?? '');
   if (np) {
     if (np.length < 4) return { error: 'Новый пароль слишком короткий.' };
@@ -139,7 +144,7 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
 
 // ---------- Тренер: группы ----------
 
-const FLAGS = ['pre_open', 'post_open', 'feedback_open', 'cert_open'] as const;
+const FLAGS = ['pre_open', 'post_open', 'feedback_open', 'cert_open', 'board_open'] as const;
 
 export async function toggleFlag(fd: FormData) {
   await requireTrainer();
@@ -225,6 +230,7 @@ export async function startActivity(fd: FormData) {
   const sql = await db();
   await sql`insert into live(group_id, activity_id, run_id, revealed, updated_at) values (${gid}, ${aid}, ${run}, false, now())
     on conflict (group_id) do update set activity_id = ${aid}, run_id = ${run}, revealed = false, updated_at = now()`;
+  await sql`insert into runs(run_id, group_id, activity_id) values (${run}, ${gid}, ${aid}) on conflict do nothing`;
   revalidatePath(`/admin/group/${gid}/live`);
 }
 

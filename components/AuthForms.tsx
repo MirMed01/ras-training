@@ -73,7 +73,7 @@ export function SetupForm() {
   );
 }
 
-export function ProfileForm({ name, workplace }: { name: string; workplace: string }) {
+export function ProfileForm({ name, workplace, hideBoard }: { name: string; workplace: string; hideBoard: boolean }) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
   return (
     <form action={action}>
@@ -82,6 +82,10 @@ export function ProfileForm({ name, workplace }: { name: string; workplace: stri
       <input id="full_name" name="full_name" type="text" defaultValue={name} required />
       <label htmlFor="workplace">Место работы</label>
       <input id="workplace" name="workplace" type="text" defaultValue={workplace} />
+      <label className="check" style={{ marginTop: 12 }}>
+        <input type="checkbox" name="hide_board" defaultChecked={hideBoard} />
+        <span className="small">Не показывать меня в рейтинге группы (баллы и значки останутся видны только мне)</span>
+      </label>
       <label htmlFor="new_password">Новый пароль <span className="muted">(оставьте пустым, если не меняете)</span></label>
       <input id="new_password" name="new_password" type="password" autoComplete="new-password" />
       <button className="btn sm" style={{ marginTop: 12 }} disabled={pending}>Сохранить</button>

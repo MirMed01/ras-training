@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireUser, userGroup } from '@/lib/auth';
 import { myAttempts } from '@/lib/data';
-import { TESTS, MODULES } from '@/lib/content';
+import { TESTS, MODULES, CONFIDENCE } from '@/lib/content';
 import { submitTest } from '@/lib/actions';
 import { SubmitButton } from '@/components/SubmitButton';
 
@@ -34,6 +34,24 @@ export default async function TestPage({ params }: { params: Promise<{ kind: str
             ))}
           </fieldset>
         ))}
+ {(CONFIDENCE[g.module] ?? []).length > 0 && (
+          <div className="q">
+            <div className="qt">Самооценка: насколько уверенно вы сейчас можете…</div>
+            <p className="small muted">1 — совсем не уверен(а), 5 — полностью уверен(а). Это не оценка, а точка отсчёта: вечером сравним.</p>
+            {(CONFIDENCE[g.module] ?? []).map((c, i) => (
+              <div key={i} style={{ marginBottom: 10 }}>
+                <div className="small" style={{ marginBottom: 4 }}>{c}</div>
+                <div className="row" style={{ gap: 6, flexWrap: 'nowrap' }}>
+                  {[1, 2, 3, 4, 5].map((v) => (
+                    <label key={v} className="opt" style={{ flex: 1, justifyContent: 'center', margin: 0, padding: '8px 4px' }}>
+                      <input type="radio" name={`c${i}`} value={v} required /> {v}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <SubmitButton label="Отправить ответы" pendingLabel="Отправляем…" />
         <p className="small muted" style={{ marginTop: 8 }}>Отправить можно один раз.</p>
       </form>
