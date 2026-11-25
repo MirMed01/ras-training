@@ -3,6 +3,7 @@ import { requireTrainer } from '@/lib/auth';
 import { db, getSetting } from '@/lib/db';
 import { regenerateTrainerCode, saveGroup } from '@/lib/actions';
 import { baseUrl } from '@/lib/url';
+import { ProfileForm } from '@/components/AuthForms';
 
 export default async function Admin() {
   const me = await requireTrainer();
@@ -43,6 +44,10 @@ export default async function Admin() {
         <form action={regenerateTrainerCode}><button className="btn ghost sm">Сменить код тренера</button></form>
         <ul className="small" style={{ marginTop: 12 }}>{trainers.map((t) => <li key={t.phone}>{t.full_name} · {t.phone}</li>)}</ul>
       </div>
+      <details className="card">
+        <summary><b>Мой профиль и пароль</b> <span className="muted small">· {me.phone}</span></summary>
+        <ProfileForm name={me.full_name} workplace={me.workplace ?? ''} hideBoard={!!me.hide_board} />
+      </details>
       <p><Link href="/admin/content">Интерактив и материалы →</Link></p>
     </main>
   );
