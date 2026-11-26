@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { AuthShell } from '@/components/AuthShell';
 import { currentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { RegisterForm } from '@/components/AuthForms';
@@ -14,13 +15,13 @@ export default async function Join({ searchParams }: { searchParams: Promise<{ c
     groupName = g[0]?.name ?? '';
   }
   return (
-    <main className="wrap narrow">
+    <AuthShell>
       <div className="card">
         <h1>Регистрация</h1>
         {groupName ? <p>Группа: <span className="badge">{groupName}</span></p>
           : <p className="muted">Введите код группы, который назвал тренер, или отсканируйте QR-код в зале.</p>}
         <RegisterForm code={code} />
       </div>
-    </main>
+    </AuthShell>
   );
 }

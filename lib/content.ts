@@ -8,6 +8,9 @@ export const EVENT = {
   title: 'Эксперт по диагностике РАС',
   city: 'Душанбе',
   organizer: 'INSIGHT',
+  // Логотип центра: положите файл в public/ (например public/logo.png) и укажите путь '/logo.png'.
+  // Пока пусто, вместо логотипа показывается название центра.
+  logo: '/logo-academy.png' as string,
   speakers: ['Мирсафо Миршарофов', 'Мадина Атласова'],
   coordinator: 'Охунова Фарангис',
 };

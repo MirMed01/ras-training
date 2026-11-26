@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: 'Учебная платформа тренинга: тесты, интерактив, материалы, сертификаты.',
   robots: { index: false, follow: false },
 };
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f6e66' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0c7053' };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let user = null;
@@ -21,7 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <header className="top">
           <div className="wrap">
-            <Link href="/" className="logo">РАС<span className="logo-full">·Эксперт</span><small>тренинг</small></Link>
+            <Link href="/" className="logo">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/logo-academy.png" alt="" width={28} height={28} className="top-logo" />РАС<span className="logo-full">·Эксперт</span><small>тренинг</small></Link>
             <nav>
               {user?.role === 'participant' && (<>
                 <Link href="/me">Кабинет</Link>
