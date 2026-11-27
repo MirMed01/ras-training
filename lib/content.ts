@@ -18,7 +18,7 @@ export const EVENT = {
 export const MODULES: Record<number, { name: string; date: string; topics: string[]; hours: number }> = {
   1: {
     name: 'Модуль 1. Диагностика РАС',
-    date: '27 ноября 2026',
+    date: '28 ноября 2026',
     hours: 5,
     topics: [
       'Критерии РАС по DSM-5-TR и МКБ-11, сбор сведений для заключения',
