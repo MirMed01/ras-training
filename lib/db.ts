@@ -126,6 +126,14 @@ async function setup() {
       }
       await tx`insert into settings(key, value) values ('mig_program_v2', '1') on conflict do nothing`;
     }
+    // Конспект модуля 1 (27.11.2026): добавить в уже засеянную базу, если его ещё нет.
+    for (const sm of SEED_MATERIALS.filter((x) => x.title.startsWith('Конспект модуля 1'))) {
+      const has = await tx`select 1 from materials where title = ${sm.title}`;
+      if (!has[0]) {
+        const [{ s }] = await tx`select coalesce(max(sort), 0) + 1 as s from materials where module = ${sm.module}`;
+        await tx`insert into materials(module, title, body, url, sort) values (${sm.module}, ${sm.title}, ${sm.body}, ${sm.url ?? null}, ${s})`;
+      }
+    }
     // Исправление даты модуля 1: 28 ноября (суббота). Меняем только стартовое название группы.
     await tx`update groups set name = 'Модуль 1 · 28 ноября' where name = 'Модуль 1 · 27 ноября'`;
     const [{ t }] = await tx`select count(*)::int as t from tasks`;
