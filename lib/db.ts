@@ -97,7 +97,7 @@ async function setup() {
     const [{ n }] = await tx`select count(*)::int as n from groups`;
     if (n === 0) {
       await tx`insert into groups(name, code, module, pre_open) values
-        ('Модуль 1 · 27 ноября', 'RAS1', 1, true),
+        ('Модуль 1 · 28 ноября', 'RAS1', 1, true),
         ('Модуль 2 · 5 декабря (медработники)', 'RAS2', 2, false)`;
     }
     const [{ a }] = await tx`select count(*)::int as a from activities`;
@@ -126,6 +126,8 @@ async function setup() {
       }
       await tx`insert into settings(key, value) values ('mig_program_v2', '1') on conflict do nothing`;
     }
+    // Исправление даты модуля 1: 28 ноября (суббота). Меняем только стартовое название группы.
+    await tx`update groups set name = 'Модуль 1 · 28 ноября' where name = 'Модуль 1 · 27 ноября'`;
     const [{ t }] = await tx`select count(*)::int as t from tasks`;
     if (t === 0) {
       let i = 0;
